@@ -6,6 +6,9 @@ public class Lesson_1 {
 
 		System.out.println( "String" + 2 + 2);
 		System.out.println( new int[][] {{1,2,7} , {3,4,5}}[1][2]);
+		
+		String s = (2 + 2) + "value";
+		System.out.println( s);
 	}
 
 }

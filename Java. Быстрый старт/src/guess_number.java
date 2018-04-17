@@ -6,19 +6,23 @@ public class guess_number {
 	
 	
 	public static void main(String[] args) {
-		
 		System.out.println("Ваша задача угадать число.");
 		
-		int range = 10;
-
-		int number = (int) (Math.random() * range);
+		for(int i = 10; i <= 30; i+= 10){
+			playLevel(i);
+		}
 		
-		playLevel(range, number);
+		System.out.println("Вы выйграли!!!!");
 		
 		scanner.close();
+		
+		
 	}
 	
-	private static void playLevel(int range, int number){
+	private static void playLevel(int range){
+		
+		int number = (int) (Math.random() * range);
+		
 		while(true){
 			System.out.println("Угодайте число от 0 до " + range);
 			int input_number = scanner.nextInt();
