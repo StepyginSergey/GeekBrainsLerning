@@ -19,3 +19,20 @@ INSERT INTO product (brand_id, product_type_id, category_id, price) VALUES (1, 1
 
 INSERT INTO product (brand_id, product_type_id, category_id, price) VALUES (3, 5, 4, 1500.20);
 INSERT INTO product (brand_id, product_type_id, category_id, price) VALUES (5, 6, 3, 2350);
+
+
+-- добавление внешних ключей в таблицу продуктов
+ALTER TABLE `shop`.`product` 
+ADD INDEX `fk_brand_id_idx` (`brand_id` ASC),
+ADD INDEX `fk_product_type_id_idx` (`product_type_id` ASC);
+ALTER TABLE `shop`.`product` 
+ADD CONSTRAINT `fk_brand_id`
+  FOREIGN KEY (`brand_id`)
+  REFERENCES `shop`.`brand` (`id`)
+  ON DELETE CASCADE
+  ON UPDATE NO ACTION,
+ADD CONSTRAINT `fk_product_type_id`
+  FOREIGN KEY (`product_type_id`)
+  REFERENCES `shop`.`product_type` (`id`)
+  ON DELETE CASCADE
+  ON UPDATE NO ACTION;
