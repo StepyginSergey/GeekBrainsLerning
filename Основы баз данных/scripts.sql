@@ -36,3 +36,15 @@ ADD CONSTRAINT `fk_product_type_id`
   REFERENCES `shop`.`product_type` (`id`)
   ON DELETE CASCADE
   ON UPDATE NO ACTION;
+  
+-- Добавление внешнего ключа к таблице продуктов из таблицы категорий  
+ALTER TABLE `shop`.`product` 
+ADD INDEX `fk_category_id_idx` (`category_id` ASC);
+ALTER TABLE `shop`.`product` 
+ADD CONSTRAINT `fk_category_id`
+  FOREIGN KEY (`category_id`)
+  REFERENCES `shop`.`category` (`id`)
+  ON DELETE CASCADE
+  ON UPDATE NO ACTION;
+  
+
