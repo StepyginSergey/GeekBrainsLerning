@@ -10,7 +10,7 @@ public class MainClass {
     public static void main(String[] args) {
 
         Course course = new Course(new Obstacle[] {new Cross(400), new Wall(3), new Water(8)});
-        Team team = new Team( new Competitor[]{new Cat("Барсик"), new Dog("Бобик"), new Human("Боб"), new Dog("Тузик")});
+        Team team = new Team( new Competitor[]{new Cat("Барсик"), new Dog("Бобик"), new Human("Боб"), new Kangaroo("Бибо")});
         course.doIt(team);
         team.showResult();
         team.showCompetitorsCompletedCourse();
