@@ -8,6 +8,10 @@ public abstract class Animal implements Competitor{
     int maxSwimDistance;
     boolean onDistance;
 
+    public String getName() {
+        return name;
+    }
+
     public boolean isOnDistance() {
         return onDistance;
     }

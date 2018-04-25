@@ -7,6 +7,10 @@ public class Human implements Competitor{
     int maxSwimDistance;
     boolean onDistance;
 
+    public String getName() {
+        return name;
+    }
+
     public boolean isOnDistance() {
         return onDistance;
     }

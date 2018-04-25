@@ -8,9 +8,16 @@ import ru.geekbrains.java2.lesson1.l1.homework.obstacles.Water;
 
 public class MainClass {
     public static void main(String[] args) {
-        Competitor[] competitors = {new Cat("Барсик"), new Dog("Бобик"), new Human("Боб")};
-        Obstacle[] course = {new Cross(400), new Wall(3), new Water(8)};
 
+        Course course = new Course(new Obstacle[] {new Cross(400), new Wall(3), new Water(8)});
+        Team team = new Team( new Competitor[]{new Cat("Барсик"), new Dog("Бобик"), new Human("Боб"), new Dog("Тузик")});
+        course.doIt(team);
+        team.showResult();
+        team.showCompetitorsCompletedCourse();
+
+        //Competitor[] competitors = {new Cat("Барсик"), new Dog("Бобик"), new Human("Боб")};
+        //Obstacle[] course = {new Cross(400), new Wall(3), new Water(8)};
+/*
         for (Competitor с: competitors){
             for (Obstacle o: course){
                 o.doIt(с);
@@ -22,5 +29,6 @@ public class MainClass {
         for (Competitor с: competitors){
             с.showResult();
         }
+*/
     }
 }
