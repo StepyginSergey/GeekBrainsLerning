@@ -48,3 +48,13 @@ ADD CONSTRAINT `fk_category_id`
   ON UPDATE NO ACTION;
   
 
+-- скрипт добавления заказа
+
+INSERT INTO `shop`.`order` (`user_name`, `phone`, `datetime`) VALUES ('Василий', '555-55-55', '2016-05-09 14:20');
+
+-- добавление таблицы корзина
+CREATE TABLE `shop`.`order_products` (
+  `order_id` INT NOT NULL,
+  `product_id` INT NULL,
+  `count` INT NULL,
+  PRIMARY KEY (`order_id`));
