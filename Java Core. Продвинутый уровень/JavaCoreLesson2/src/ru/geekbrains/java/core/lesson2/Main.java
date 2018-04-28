@@ -7,7 +7,7 @@ public class Main {
         String[][] array =  {
                 {"1","2","3","4"},
                 {"5","6","7","8"},
-                {"9","1","2","3"},
+                {"9","1","2a","3"},
                 {"4","5","6","7"}
         };
 
@@ -17,6 +17,7 @@ public class Main {
             System.out.println("Сумма элементов массива равна = " + count);
 
         }catch(MySizeArrayException e){
+        }catch(MyArrayDataException e){
         }
     }
 /*
@@ -32,7 +33,7 @@ MySizeArrayException и MyArrayDataException и вывести результа�
 
 */
 
-    public static int summElementArray(String[][] array) throws MySizeArrayException {
+    public static int summElementArray(String[][] array) throws MySizeArrayException, MyArrayDataException {
         int result = 0;
         int row = array.length;
         if( row > 4){
@@ -50,7 +51,12 @@ MySizeArrayException и MyArrayDataException и вывести результа�
 
         for(int i = 0; i < array.length; i++){
             for(int j = 0; j < array[i].length; j++){
-
+                try {
+                    result += Integer.parseInt(array[i][j]);
+                }catch(NumberFormatException e){
+                    throw new MyArrayDataException("Ошибка преобразования. Не числовое значение находится в [" +
+                            (i+1) + "][" + (j+1) + "] ячейке массива.");
+                }
             }
         }
 
@@ -66,6 +72,15 @@ MySizeArrayException и MyArrayDataException и вывести результа�
         public MySizeArrayException(String message) {
             super(message);
             System.out.println("MySizeArrayException - message = [" + message + "]");
+            super.printStackTrace();
+        }
+    }
+
+    static class MyArrayDataException extends Exception {
+
+        public MyArrayDataException(String message) {
+            super(message);
+            System.out.println("MyArrayDataException - message = [" + message + "]");
             super.printStackTrace();
         }
     }
