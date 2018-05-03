@@ -21,6 +21,11 @@ public class Main {
     */
 
     public static void main(String[] args) {
+        String[] array = {"феномен", "ферма", "Фермий", "фермер","формула",
+                        "фонтан","ферма", "фортуна", "фонтан"," фокус", "фермер",
+                        "фанера", "форватер", "феномен"};
+
+        System.out.println(array.length);
 
     }
 }
