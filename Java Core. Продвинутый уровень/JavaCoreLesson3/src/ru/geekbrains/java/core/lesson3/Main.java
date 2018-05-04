@@ -43,7 +43,9 @@ public class Main {
             System.out.println("Список уникальных значений из TreeSet + сортировка: " + treeSet.toString());
         }
 
-
+        System.out.println("*****************************");
+        System.out.println();
+        System.out.println("Телефонный справочник:");
         {
             //Пример работы со справочником
             Phonebook book = new Phonebook();
