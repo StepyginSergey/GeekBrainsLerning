@@ -35,13 +35,24 @@ public class ChatClient extends JFrame {
 
         jta = new JTextArea();
         jta.setEditable(false);
+        jta.setFont(new Font("Areal", Font.BOLD, 15 ));
         JScrollPane scroll = new JScrollPane(jta);
+
+        //JList<String> userList = new JList<>(new String[]{"User 1", "User 2", "User 3", "User 4"});
+        JList<String> userList = new JList<>(new DefaultListModel<>());
+        userList.setPreferredSize(new Dimension(95, 1));
+        ((DefaultListModel)userList.getModel()).addElement("User 1");
+        ((DefaultListModel)userList.getModel()).addElement("User 2");
+        ((DefaultListModel)userList.getModel()).addElement("User 3");
+        ((DefaultListModel)userList.getModel()).addElement("User 4");
+
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
         panel.add(jtf, BorderLayout.CENTER);
         panel.add(button, BorderLayout.EAST);
 
+        add(userList, BorderLayout.EAST);
         add(scroll,BorderLayout.CENTER);
         add(panel, BorderLayout.SOUTH);
         setVisible(true);
