@@ -1,7 +1,4 @@
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by stepygin on 15.05.2018.
@@ -9,8 +6,9 @@ import java.util.Set;
 public class Test {
     public static void main(String[] args) {
 
-        HashMap<String, Integer> m = new HashMap<>();
-        m.
+        //Collection<String> map3 = new HashMap<>()
+        NavigableMap<String, Integer> map = new TreeMap<>();
+        HashMap<String, Integer> map1 = new LinkedHashMap<>();
 
         try{
             return;
