@@ -38,13 +38,14 @@ public class Controller implements Initializable {
 
     private boolean authorized;
 
-    public void setAuthorized(boolean authorized) {
+    public void setAuthorized(boolean authorized, String nick) {
         this.authorized = authorized;
         if (authorized){
             msgPanel.setVisible(true);
             msgPanel.setManaged(true);
             authPanel.setVisible(false);
             authPanel.setManaged(false);
+            Platform.runLater(() -> { infoLabel.setText("Вы авторизированны, как " + nick + "!"); });
         } else {
             msgPanel.setVisible(false);
             msgPanel.setManaged(false);
@@ -59,7 +60,7 @@ public class Controller implements Initializable {
             socket = new Socket(SERVER_IP, SERVER_PORT);
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
-            setAuthorized(false);
+            setAuthorized(false, null);
 
             Thread t = new Thread(() -> {
                 try {
@@ -67,8 +68,8 @@ public class Controller implements Initializable {
                         String s = null;
                         s = in.readUTF();
                         if (s.startsWith("/authok")){
-                            //String[] data = s.split("\\s");
-                            setAuthorized(true);
+                            String[] data = s.split("\\s");
+                            setAuthorized(true, data[1]);
                             break;
                         } else {
                             textArea.appendText(s + "\n");
@@ -83,7 +84,7 @@ public class Controller implements Initializable {
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
-                    setAuthorized(false);
+                    setAuthorized(false, null);
                     try {
                         socket.close();
                     } catch (IOException e) {

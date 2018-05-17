@@ -15,6 +15,11 @@
         <PasswordField fx:id="passField" onAction="#sendAuthMsg" promptText="Пароль" />
         <Button onAction="#sendAuthMsg" text="Авторизоваться" />
     </HBox>
+   <Label fx:id="infoLabel" text="Вы не авторизировались!" textAlignment="CENTER" VBox.vgrow="ALWAYS">
+      <opaqueInsets>
+         <Insets />
+      </opaqueInsets>
+   </Label>
     <TextArea fx:id="textArea" editable="false" VBox.vgrow="ALWAYS" />
     <HBox fx:id="msgPanel">
         <TextField fx:id="msgField" onAction="#sendMsg" promptText="Написать сообщение..." HBox.hgrow="ALWAYS" />
