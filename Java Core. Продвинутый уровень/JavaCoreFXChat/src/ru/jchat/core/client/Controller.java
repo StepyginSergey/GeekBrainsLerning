@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Controller implements Initializable {
     @FXML
@@ -29,14 +31,17 @@ public class Controller implements Initializable {
     @FXML
     Label infoLabel;
 
-    private Socket socket;
-    private DataOutputStream out;
-    private DataInputStream in;
+    private static Socket socket;
+    private  DataOutputStream out;
+    private  DataInputStream in;
+
+    private static int period = 30_000;
+    private static int timeout = 0;
 
     final String SERVER_IP = "localhost";
     final int SERVER_PORT = 8189;
 
-    private boolean authorized;
+    private static boolean authorized;
 
     public void setAuthorized(boolean authorized, String nick) {
         this.authorized = authorized;
@@ -54,6 +59,44 @@ public class Controller implements Initializable {
         }
     }
 
+    private void startTimer(){
+
+        Timer timer = new Timer();
+
+        timer.schedule(
+                new TimerTask() {
+
+                    @Override
+                    public void run() {
+                        if(timeout == period){
+                            if(!authorized){
+                                System.out.println("Socket close!");
+                                try {
+                                    in.close();
+                                    out.close();
+                                    Platform.runLater(() -> {textArea.appendText( "Вы не авторизовались. соединение сброшено." + "\n");});
+
+                                    socket.close();
+                                    this.cancel();
+                                    timer.cancel();
+                                } catch (Throwable throwable) {
+                                    throwable.printStackTrace();
+                                }
+                            }
+                        }else {
+                            timeout = period;
+                        }
+
+                        if(authorized){
+                            System.out.println("Timer canceled!");
+                            this.cancel();
+                            timer.cancel();
+                        }
+                    }
+                }, 0, period);
+
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         try {
@@ -61,6 +104,8 @@ public class Controller implements Initializable {
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
             setAuthorized(false, null);
+
+            startTimer();
 
             Thread t = new Thread(() -> {
                 try {
