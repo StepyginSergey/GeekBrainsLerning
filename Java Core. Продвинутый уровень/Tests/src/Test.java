@@ -26,6 +26,11 @@ public class Test {
         String str = (String)object;
         System.out.println(str);
 */
+        try{
+
+        }catch(Throwable e){
+            throw new Error();
+        }
 
         int[] time = {5}; //Чтобы внутри события был доступен, делаем в виде массива.
         //String label = "5";
