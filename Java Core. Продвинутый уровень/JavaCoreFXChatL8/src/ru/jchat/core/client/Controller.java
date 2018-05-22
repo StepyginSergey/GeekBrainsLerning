@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Controller implements Initializable {
     @FXML
@@ -37,6 +39,9 @@ public class Controller implements Initializable {
     private Socket socket;
     private DataOutputStream out;
     private DataInputStream in;
+
+    private static int period = 120_000;
+    private static int timeout = 0;
 
     final String SERVER_IP = "localhost";
     final int SERVER_PORT = 8189;
@@ -70,6 +75,7 @@ public class Controller implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setAuthorized(false);
+        startTimer();
     }
 
     public void connect(){
@@ -90,7 +96,7 @@ public class Controller implements Initializable {
                             if (!empty){
                                 setText(item);
                                 if (item.equals(myNick)){
-                                    setStyle("-fx-font-weight: bold; -fx-background-color: #00ffff");
+                                    setStyle("-fx-font-weight: bold; -fx-background-color: #F08080");
                                 }
                             } else{
                                 setGraphic(null);
@@ -131,7 +137,7 @@ public class Controller implements Initializable {
                         }
                     }
                 } catch (IOException e) {
-                    showAlert("Сервер перестал отвечать");
+                    showAlert(null, "Сервер перестал отвечать");
                 } finally {
                     setAuthorized(false);
                     try {
@@ -144,13 +150,13 @@ public class Controller implements Initializable {
             t.setDaemon(true);
             t.start();
         } catch (IOException e) {
-            showAlert("Не удалось подключиться к серверу. Проверьте сетевое соединение");
+            showAlert(null, "Не удалось подключиться к серверу. Проверьте сетевое соединение");
         }
     }
 
     public void sendAuthMsg(){
         if (loginField.getText().isEmpty() || passField.getText().isEmpty()){
-            showAlert("Указаны неполные авторизационные данные");
+            showAlert(null, "Указаны неполные авторизационные данные");
             return;
         }
 
@@ -163,7 +169,7 @@ public class Controller implements Initializable {
             loginField.clear();
             passField.clear();
         } catch (IOException e) {
-            showAlert("Не удалось подключиться к серверу. Проверьте сетевое соединение");
+            showAlert(null, "Не удалось подключиться к серверу. Проверьте сетевое соединение");
         }
     }
 
@@ -173,14 +179,19 @@ public class Controller implements Initializable {
             msgField.clear();
             msgField.requestFocus();
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            showAlert(null, "Не удалось отправить сообщение. Проверьте сетевое подключение.");
         }
     }
 
-    public void showAlert(String msg){
+    public void showAlert(String title, String msg){
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Возникли проблемы");
+            if(title == null){
+                alert.setTitle("Возникли проблемы");
+            }else{
+                alert.setTitle(title);
+            }
             alert.setHeaderText(null);
             alert.setContentText(msg);
             alert.showAndWait();
@@ -193,5 +204,47 @@ public class Controller implements Initializable {
             msgField.requestFocus();
             msgField.selectEnd();
         }
+    }
+
+    private void startTimer(){
+
+        Timer timer = new Timer();
+
+        timer.schedule(
+                new TimerTask() {
+
+                    @Override
+                    public void run() {
+                        if(timeout == period){
+                            if(!authorized){
+                                //System.out.println("Socket close!");
+                                try {
+                                    //in.close();
+                                    //out.close();
+
+                                    showAlert("Время истекло!", "Вы не авторизовались в течении " + (period /1000)
+                                            + " секунд.\n Перезапустите клиет для повторной авторизации!" );
+                                    Platform.runLater(() -> {authPanel.setVisible(false);
+                                        authPanel.setManaged(false);});
+
+                                    //socket.close();
+                                    this.cancel();
+                                    timer.cancel();
+                                } catch (Throwable throwable) {
+                                    throwable.printStackTrace();
+                                }
+                            }
+                        }else {
+                            timeout = period;
+                        }
+
+                        if(authorized){
+                            System.out.println("Timer canceled!");
+                            this.cancel();
+                            timer.cancel();
+                        }
+                    }
+                }, 0, period);
+
     }
 }
