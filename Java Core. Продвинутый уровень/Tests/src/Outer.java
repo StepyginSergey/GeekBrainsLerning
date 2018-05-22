@@ -11,7 +11,6 @@
         void summ(){
             iInt = iInt + oInt;
             Object object = new Object();
-            object.;
         }
 
 
