@@ -16,7 +16,7 @@ public class Main {
         long time = System.currentTimeMillis();
         db.initBatch();
         for(int i = 0; i < 10_000; i++){
-            db.fillBatch(i, i, "Product_" + i, (i+1)*10);
+            db.fillBatch(i, "Product_" + i, (i+1)*10);
         }
         System.out.println("Время формирования пакета:" + (System.currentTimeMillis() - time));
 
@@ -27,6 +27,7 @@ public class Main {
 
 
         while (true){
+            System.out.println("Введите команду:");
             Scanner scanner = new Scanner(System.in);
             String str = scanner.nextLine();
 
@@ -34,10 +35,20 @@ public class Main {
                 break;
             }
             if(str.startsWith("/price")){
-                db.getPrice(str.split("\\s", 2)[1].toString());
+                // /price Product_13
+                db.getPrice(str.split("\\s", 2)[1]);
+            }
+            if(str.startsWith("/changeprice")){
+                //  /changeprice Product_13 500
+                String[] data = str.split("\\s");
+                db.changePrice(data[1], Float.valueOf(data[2]));
+            }
+            if(str.startsWith("/byprice")){
+                //  /byprice 100 160
+                String[] data = str.split("\\s");
+                db.byPrice(Float.valueOf(data[1]), Float.valueOf(data[2]));
             }
         }
-
 
         db.disconnect();
     }

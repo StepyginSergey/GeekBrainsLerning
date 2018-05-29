@@ -33,7 +33,7 @@ public class DataBaseController {
     public void createTable(){
         try {
             Statement statement = connection.createStatement();
-            String query = "CREATE TABLE IF NOT EXISTS product ( id BIGINT PRIMARY KEY UNIQUE NOT NULL, prodid BIGINT UNIQUE NOT NULL, title TEXT, cost DECIMAL);";
+            String query = "CREATE TABLE IF NOT EXISTS product ( id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, prodid BIGINT UNIQUE NOT NULL, title TEXT, cost DECIMAL);";
             statement.execute(query);
             System.out.println("Таблица создана успешно!");
             statement.close();
@@ -56,18 +56,17 @@ public class DataBaseController {
 
     public void initBatch(){
         try {
-            pStat = connection.prepareStatement("INSERT INTO product (id, prodid, title, cost) VALUES (?, ?, ?, ?);");
+            pStat = connection.prepareStatement("INSERT INTO product (prodid, title, cost) VALUES (?, ?, ?);");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void fillBatch(long id, long prodid, String title, float cost){
+    public void fillBatch(int prodid, String title, float cost){
         try{
-            pStat.setLong(1, id);
-            pStat.setLong(2, prodid);
-            pStat.setString(3, title);
-            pStat.setFloat(4, cost);
+            pStat.setInt(1, prodid);
+            pStat.setString(2, title);
+            pStat.setFloat(3, cost);
 
             pStat.addBatch();
             //System.out.println("Запись добавлена  в пакет. #" + id);
@@ -90,6 +89,12 @@ public class DataBaseController {
                 e1.printStackTrace();
             }
             e.printStackTrace();
+        }finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -99,14 +104,43 @@ public class DataBaseController {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(1, name);
 
-            ResultSet rs = statement.executeQuery(query);
+            ResultSet rs = statement.executeQuery();
 
             if (rs.next()){
-                System.out.println("Стоимость товара " + name + " равна " + rs.getFloat(0));
+                System.out.println("Стоимость товара " + name + " равна " + rs.getFloat(1));
             }else {
                 System.out.println("Такого товара нету!");
             }
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void changePrice(String name, float newPrice){
+        try {
+            String query = "UPDATE product SET cost = ? WHERE title = ?;";
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setFloat(1, newPrice);
+            statement.setString(2, name);
+            statement.execute();
+            System.out.println("Цена товара обновлена!");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void byPrice(float from, float to){
+        try {
+            String query = "select title, cost from product where cost BETWEEN ? AND ? ; ";
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setFloat(1, from);
+            statement.setFloat(2, to);
+            ResultSet rs = statement.executeQuery();
+            System.out.println("Список товаров в диапазоне от " + from + " до " + to);
+            while (rs.next()){
+                System.out.println(rs.getString(1) + " = " + rs.getFloat(2));
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
