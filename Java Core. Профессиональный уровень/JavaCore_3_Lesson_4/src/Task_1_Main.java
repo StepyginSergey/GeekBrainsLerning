@@ -1,47 +1,55 @@
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Created by stepygin on 07.06.2018.
  */
 public class Task_1_Main {
 
     public static void main(String[] args) {
+        Controller controller = new Controller();
+        new NamedThread("B", controller).start();
+        new NamedThread("C", controller).start();
+        new NamedThread("A", controller).start();
+    }
+}
 
-        Object obj = new Object();
-        obj.equals(obj);
-        obj.hashCode();
+class NamedThread extends Thread {
+    private String name;
+    private Controller controller;
 
+    public NamedThread(String name, Controller controller) {
+        setName(name);
+        this.controller = controller;
+    }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for(int i = 0; i < 5; i++){
-                    System.out.print("A");
-
+    @Override
+    public void run() {
+        synchronized (controller) {
+            for (int i = 0; i < 5; i++) {
+                try {
+                    while (!controller.getCurrent().equals(getName())) {
+                        controller.wait();
+                    }
+                    System.out.print(getName());
+                    controller.move();
+                    controller.notifyAll();
+                } catch (Exception e) {
                 }
             }
-        }).start();
+        }
+    }
+}
 
+class Controller {
+    int pos = 0;
+    final String[] list = {"A","B","C"};
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for(int i = 0; i < 5; i++){
-                    System.out.print("B");
+    public String getCurrent() {
+        return list[pos];
+    }
 
-                }
-            }
-        }).start();
-
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for(int i = 0; i < 5; i++){
-                    System.out.print("C");
-
-                }
-            }
-        }).start();
-
-
+    public void move() {
+        pos = (pos == list.length - 1) ? 0 : pos + 1;
     }
 }
