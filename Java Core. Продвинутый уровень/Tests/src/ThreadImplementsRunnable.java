@@ -5,5 +5,7 @@ public class ThreadImplementsRunnable implements Runnable {
     @Override
     public void run() {
         System.out.println("implements Runnable");
+
+
     }
 }
