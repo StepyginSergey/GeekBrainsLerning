@@ -1,4 +1,4 @@
-Урок 1
+﻿Урок 1
 
 Уважаемые ученики, первая четверть подходит к концу. По завершении этого курса необходимо сдать готовый проект: игру Space shooter. Результаты принимаются в виде ссылки на github-репозиторий.
 
@@ -37,3 +37,17 @@
 //*********************************************************************************************
 
 
+
+Ссылка на проект: https://github.com/akutepov/StarGame
+
+Официальная документация по LibGDX: https://github.com/libgdx/libgdx/wiki
+Документация по LibGDX на русском языке: http://www.libgdx.ru
+Описание работы с камерой: http://www.libgdx.ru/2013/11/orthographic-camera.html
+Работа с файлами ( в них можно хранить настройки игры): https://github.com/libgdx/libgdx/wiki/File-handling
+Настройки удобно хранить как JSON и для этого есть библиотека GSON: http://developer.alexanderklimov.ru/android/library/gson.php
+Сайт со статьями по Android-разработке: http://developer.alexanderklimov.ru/android/
+Серия статей по LibGDX (немного устаревших): https://www.gamefromscratch.com/page/LibGDX-Tutorial-series.aspx
+Серия статей по LibGDX на русском: http://android-study.ru/uroki-libgdx/
+
+Как размещать в Google Play: https://developer.android.com/studio/publish/
+https://support.google.com/googleplay/android-developer/answer/113469?hl=ru
