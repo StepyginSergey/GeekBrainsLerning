@@ -1,0 +1,70 @@
+﻿
+# создаем схему lesson2
+CREATE SCHEMA IF NOT EXISTS `lesson2`;
+
+# удаляем схему lesson2
+DROP DATABASE `lesson2`;
+
+# создаем схему lesson2 с указанной кодировкой
+CREATE SCHEMA IF NOT EXISTS `lesson2` CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# выбираем схему lesson2
+USE `lesson2`;
+
+# создаем таблицу depart в выбранной схеме
+CREATE TABLE `depart` (
+`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+`name` VARCHAR(40) NOT NULL,
+`count` INT DEFAULT 0,
+`head_id` INT
+);
+
+# создаем таблицу shtat в выбранной схеме с указанной кодировкой
+CREATE TABLE IF NOT EXISTS `shtat` (
+`id` INT NOT NULL AUTO_INCREMENT,
+`name` VARCHAR(25) NOT NULL,
+`lastname` VARCHAR(25) NOT NULL,
+`dept` INT,
+`position` VARCHAR(30),
+`salary` INT,
+PRIMARY KEY (`id`)
+)DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# изменяем таблицу shtat (добавляем колоку birthday)
+ALTER TABLE `shtat` 
+ADD COLUMN `birthday` DATE AFTER `lastname`;
+
+# изменяем таблицу shtat (переименовываем столбец salary и удаляем birthday)
+ALTER TABLE `shtat` 
+RENAME COLUMN `salary` TO `sal`,
+DROP COLUMN `birthday`;
+
+# изменяем таблицу shtat (добавляем индекс fullname)
+ALTER TABLE `shtat` 
+ADD UNIQUE INDEX `fullnamr` (`name`, `lastname`);
+
+# другой способ создания индекса
+CREATE INDEX `otdel` ON `shtat`(`dept`);
+
+# просмотр всех индексов в таблице shtat
+SHOW INDEX FROM `shtat`;
+
+# изменяем таблицу shtat (переименовываем индекс fullnamr)
+ALTER TABLE `shtat` RENAME INDEX `fullnamr` TO `fullname`;
+
+# изменяем таблицу shtat (добавляем внешний ключ)
+ALTER TABLE `shtat`
+ADD CONSTRAINT `depdep` FOREIGN KEY (`dept`)
+REFERENCES `depart`(`id`)
+ON UPDATE CASCADE
+ON DELETE RESTRICT;
+
+# изменяем таблицу depart (конвертируем кодировку)
+ALTER TABLE `shtat` 
+CONVERT TO CHAR SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# удаляем таблицу shtat
+DROP TABLE IF EXISTS `shtat`;
+
+# очищаем таблицу depart
+TRUNCATE TABLE `depart`;
