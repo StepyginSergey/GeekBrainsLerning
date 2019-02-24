@@ -286,3 +286,20 @@
 /Алгоритмы и структуры данных на Java. Базовый курс/Видео лекций/Лекция 7.mp4
 /Креатив для некреаторов/лекция 1.mp4
 /Java. Углубленное изучение/Видео лекций/Лекция 3.mp4
+/Java. Углубленное изучение/JavaFX CookBook/.idea/vcs.xml
+/Java. Углубленное изучение/netty-file-transfer/.idea/compiler.xml
+/Java. Углубленное изучение/netty-file-transfer/.idea/encodings.xml
+/Java. Углубленное изучение/netty-file-transfer/.idea/misc.xml
+/Java. Углубленное изучение/netty-file-transfer/.idea/uiDesigner.xml
+/Java. Углубленное изучение/netty-file-transfer/.idea/workspace.xml
+/Java. Углубленное изучение/netty-file-transfer/common/src/main/java/com/flamexander/netty/example/common/AbstractMessage.java
+/Java. Углубленное изучение/netty-file-transfer/common/src/main/java/com/flamexander/netty/example/common/FileMessage.java
+/Java. Углубленное изучение/netty-file-transfer/common/src/main/java/com/flamexander/netty/example/common/FileRequest.java
+/Java. Углубленное изучение/netty-file-transfer/common/target/classes/com/flamexander/netty/example/common/AbstractMessage.class
+/Java. Углубленное изучение/netty-file-transfer/common/target/classes/com/flamexander/netty/example/common/FileMessage.class
+/Java. Углубленное изучение/netty-file-transfer/common/target/classes/com/flamexander/netty/example/common/FileRequest.class
+/Java. Углубленное изучение/netty-file-transfer/server/src/main/java/com/flamexander/netty/example/server/MainHandler.java
+/Java. Углубленное изучение/netty-file-transfer/server/src/main/java/com/flamexander/netty/example/server/Server.java
+/Java. Углубленное изучение/netty-file-transfer/server/target/classes/com/flamexander/netty/example/server/MainHandler.class
+/Java. Углубленное изучение/netty-file-transfer/server/target/classes/com/flamexander/netty/example/server/Server$1.class
+/Java. Углубленное изучение/netty-file-transfer/server/target/classes/com/flamexander/netty/example/server/Server.class
