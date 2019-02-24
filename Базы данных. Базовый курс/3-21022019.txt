@@ -1,0 +1,225 @@
+﻿
+# создаем схему lesson2
+CREATE SCHEMA IF NOT EXISTS `lesson2`;
+
+# удаляем схему lesson2
+DROP DATABASE `lesson2`;
+
+# создаем схему lesson2 с указанной кодировкой
+CREATE SCHEMA IF NOT EXISTS `lesson2` CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# выбираем схему lesson2
+USE `lesson2`;
+
+# создаем таблицу depart в выбранной схеме
+CREATE TABLE `depart` (
+`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+`name` VARCHAR(40) NOT NULL,
+`count` INT DEFAULT 0,
+`head_id` INT
+);
+
+# создаем таблицу shtat в выбранной схеме с указанной кодировкой
+CREATE TABLE IF NOT EXISTS `shtat` (
+`id` INT NOT NULL AUTO_INCREMENT,
+`name` VARCHAR(25) NOT NULL,
+`lastname` VARCHAR(25) NOT NULL,
+`dept` INT,
+`position` VARCHAR(30),
+`salary` INT,
+PRIMARY KEY (`id`)
+)DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+---
+
+
+# вставляем в таблицу depart строки полностью
+INSERT INTO `depart` (`id`,`name`,`count`,`head_id`) VALUES (1, 'it', 0, NULL);
+
+# вставляем в таблицу depart только нужные столбцы
+INSERT INTO `depart` (`name`) VALUES ('Бухгалтерия');
+
+# вставляем в таблицу depart строки полностью (можно не перечислять столбцы)
+INSERT INTO `depart` VALUES (3, 'Маркетинг', 0, NULL);
+
+# вставляем в таблицу depart сразу несколько строк
+INSERT INTO `depart` 
+(`name`) VALUES 
+('Бухгалтерия'),
+('Охрана'),
+('Контроль качества'),
+('Реклама');
+
+
+# вставляем в таблицу shtat сразу несколько строк
+INSERT INTO `shtat` 
+(`name`,`lastname`,`dept`,`salary`) VALUES 
+('Тарас','Голомозый',1,25000),
+('Антон','Полонников',14,35000),
+('Алена','Звягинцева',1,45000),
+('Владимир','Питерский',1,40000),
+('Анатолий','Башлыков',2,30000),
+('Ирина','Кенина',2,50000);
+
+
+SHOW CREATE TABLE `depart`;
+
+# изменяем текущее значение авто инкремента
+ALTER TABLE `depart` AUTO_INCREMENT=100;
+
+# проверяем какой AI получит новая запись
+INSERT INTO `depart` (`name`) VALUES ('Почтовый Отдел');
+
+
+---
+
+
+# смотрим включена ли проверка внешних ключей
+SHOW VARIABLES LIKE 'foreign_key_checks';
+
+# отключаем проверку внешних ключей
+SET foreign_key_checks = 0;
+
+# изменяем таблицу shtat (добавляем внешний ключ)
+ALTER TABLE `shtat`
+ADD CONSTRAINT `depdep` FOREIGN KEY (`dept`)
+REFERENCES `depart`(`id`)
+ON UPDATE CASCADE
+ON DELETE RESTRICT;
+
+# включаем проверку внешних ключей
+SET foreign_key_checks = 1;
+
+
+---
+
+# текущая дата (просто выводим на экран)
+SELECT NOW();
+SELECT CURDATE();
+
+# получаем все записи из таблицы shtat
+SELECT * FROM `shtat`;
+
+# пример конкатенации и алиаса
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО` FROM `shtat`;
+
+# получаем записи по условию WHERE
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `salary` = 30000;
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `salary` != 30000;
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `salary` < 30000;
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `salary` > 30000;
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `salary` <= 30000;
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `salary` >= 30000;
+
+# можно использовать dept в условии не смотря на точ то его нет в выборке
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary` FROM `shtat` WHERE `dept` = 1;
+
+# логическое сравнение IS NULL и IS NOT NULL
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary`, `dept`,`position` FROM `shtat` WHERE `position` IS NULL;
+SELECT CONCAT(`name`, ' ',`lastname`) AS `ФИО`, `salary`, `dept`,`position` FROM `shtat` WHERE `position` IS NOT NULL;
+
+# проверяем значения внутри множества
+SELECT * FROM `shtat` WHERE `salary` IN (25000,5000,20000,40000);
+SELECT * FROM `shtat` WHERE `dept` IN (SELECT `id` FROM `depart`);
+SELECT * FROM `shtat` WHERE `dept` NOT IN (SELECT `id` FROM `depart`);
+
+# используем BETWEEN и аналогичное условие
+SELECT * FROM `shtat` WHERE `salary` BETWEEN 30000 AND 40000;
+SELECT * FROM `shtat` WHERE `salary` >= 30000 AND `salary` <= 40000;
+
+# полнотекстовый поиск
+SELECT * FROM `shtat` WHERE `name` LIKE 'А%';
+SELECT * FROM `shtat` WHERE `name` LIKE 'А____';
+SELECT * FROM `shtat` WHERE `name` LIKE '%А%';
+SELECT * FROM `shtat` WHERE `name` LIKE BINARY '%А%';
+
+SELECT * FROM `shtat` WHERE `name` REGEXP '^А';
+
+
+# используем функции агрегаторы
+SELECT SUM(`sal`) FROM `shtat`;
+SELECT MIN(`sal`) FROM `shtat`;
+SELECT AVG(`sal`) FROM `shtat`;
+SELECT MAX(`sal`) FROM `shtat`;
+
+# считаем кол-во записей в табл `shtat`
+SELECT COUNT(`id`) FROM `shtat`;
+## или так
+SELECT COUNT(*) FROM `shtat`;
+## но не так!
+SELECT MAX(`id`) FROM `shtat`;
+
+# с указанием имени запрос усложняется
+SELECT `salary`, `name` FROM `shtat` WHERE `salary` = (SELECT MAX(`salary`) FROM `shtat`);
+
+# применяем функцию группировки по столбцу dept
+SELECT SUM(`sal`) AS `ФОТ`, `dept` FROM `shtat` 
+GROUP BY `dept`;
+
+# объединяем запросы с целью получить данные сразу из двух таблиц
+SELECT SUM(`salary`) AS `ФОТ`, `depart`.`name` FROM `shtat` 
+INNER JOIN `depart`
+ON `shtat`.`dept` = `depart`.`id`
+GROUP BY `depart`.`name` ORDER BY `ФОТ` DESC;
+
+# приоритет данным из левой таблицы (shtat)
+SELECT `shtat`.`name`,`shtat`.`lastname`, `depart`.`name` AS `отдел`  FROM `shtat` 
+LEFT JOIN `depart`
+ON `shtat`.`dept` = `depart`.`id`
+WHERE `shtat`.`id` = 1;
+SELECT MIN(`salary`) AS `ФОТ`, `dept` FROM `shtat` 
+GROUP BY `dept` HAVING `ФОТ` < 100000 ORDER BY `ФОТ` ASC;
+
+# приоритет данным из правой таблицы (depart)
+SELECT `shtat`.`name`,`shtat`.`lastname`, `depart`.`name` AS `отдел`  FROM `shtat` 
+RIGHT JOIN `depart`
+ON `shtat`.`dept` = `depart`.`id`
+WHERE `shtat`.`id` = 1;
+SELECT MIN(`salary`) AS `ФОТ`, `dept` FROM `shtat` 
+GROUP BY `dept` HAVING `ФОТ` < 100000 ORDER BY `ФОТ` ASC;
+
+# получаем данные из обеих таблиц только в случае совпадения с условием
+SELECT `shtat`.`name`,`shtat`.`lastname`, `depart`.`name` AS `отдел`  FROM `shtat` 
+RIGHT JOIN `depart`
+ON `shtat`.`dept` = `depart`.`id`
+WHERE `shtat`.`id` = 1;
+
+# применяем дополнительный фильтр HAVING
+SELECT SUM(`sal`) AS `ФОТ`, `dept` FROM `shtat` 
+GROUP BY `dept`
+HAVING `ФОТ` > 100000;
+
+# применяем сортировку ORDER BY
+SELECT * FROM `shtat` ORDER BY `id` ASC;
+SELECT `name` FROM `shtat` ORDER BY `id` ASC;
+
+# ограничиваем кол-во выводимых записей
+SELECT * FROM `shtat` ORDER BY `salary` ASC LIMIT 5,80;
+
+
+---
+
+# удаляем строки из таблицы shtat по условию
+DELETE FROM `shtat` WHERE `id` = 5;
+
+# изменяем записи в таблице shtat по условию
+UPDATE `shtat` SET `dept` = 1 WHERE `id` = 2;
+
+
+---
+
+
+# создаем таблицу old_shtat с такой же структурой как shtat
+CREATE TABLE IF NOT EXISTS `shtat_old` LIKE `shtat`;
+
+# вставляем в таблицу old_shtat несколько строк
+INSERT INTO `shtat_old` 
+(`name`,`lastname`,`dept`,`salary`) VALUES 
+('Тарас','Голомозый',1,77000),
+('Антон','Полонников',1,88000);
+
+# получаем данные сразу из двух таблиц
+SELECT * FROM `shtat`
+UNION
+SELECT * FROM `shtat_old`;
