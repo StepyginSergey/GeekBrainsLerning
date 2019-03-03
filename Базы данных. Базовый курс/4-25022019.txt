@@ -1,0 +1,176 @@
+﻿
+# 1
+# 1 выбираем среднюю зп по отделам
+SELECT AVG(`salary`) AS `сред зп`,`depart`.`name` FROM `shtat` 
+LEFT JOIN `depart`
+ON `depart`.`id` = `shtat`.`dept`
+GROUP BY `depart`.`name`;
+
+# 2
+# 2 выбираем сотрудника с максимальной зп
+SELECT * FROM `shtat` WHERE `salary` = (SELECT MAX(`salary`) FROM `shtat`);
+
+# 3
+# 3.1 удаляем сотрудника с максимальной зп через ORDER BY
+DELETE FROM `shtat` ORDER BY `salary` DESC LIMIT 1;
+
+# находим переменную которая отвечает за безопасный режим
+SHOW VARIABLES LIKE 'sql_safe%';
+
+# выключаем безопасный режим
+SET sql_safe_updates = 0;
+
+# 3.2 удаляем сотрудника с максимальной зп через temp_table
+DELETE FROM `shtat` WHERE `salary` = 
+(SELECT * FROM (SELECT MAX(`salary`) FROM `shtat`) AS `temp1`) LIMIT 1;
+
+# 3.3 чтобы не выключать безопасный режим нужно удалять через id
+DELETE FROM `shtat` WHERE `id` = 
+(SELECT * FROM 
+	(SELECT `id` FROM `shtat` WHERE `sal` = 
+		(SELECT MAX(`sal`) FROM `shtat`)
+	) AS `temp_table`
+);
+
+# 4
+# 4 считаем общее кол-во сотрудников
+SELECT COUNT(*) FROM `shtat`;
+# или вот так
+SELECT COUNT(`id`) FROM `shtat`;
+# но не так
+SELECT MAX(`id`) FROM `shtat`;
+
+# 5
+# 5 считаем кол-во сотрудников по отделам и сколько всего денег получает отдел
+SELECT COUNT(*) AS `кол-во сотр`, SUM(`salary`) AS `ФОТ`, `depart`.`name` 
+FROM `shtat` 
+LEFT JOIN `depart`
+ON `depart`.`id` = `shtat`.`dept`
+GROUP BY `depart`.`name`; 
+
+
+---
+
+
+# создаем таблицу с датами
+CREATE TABLE IF NOT EXISTS `dates`(
+`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+`sotr_id` INT NOT NULL,
+`entrance` DATE,
+`layoff` DATE
+);
+
+# вставляем даты поступления на работу
+INSERT INTO `dates` (`entrance`,`sotr_id`) VALUES 
+(CURDATE(),1),
+(CURDATE(),2) 
+...
+
+# a так можно заполнить даты сразу для всех сотрудников
+INSERT INTO `dates` (`entrance`, `sotr_id`)  SELECT CURDATE(), `id` FROM `shtat`;
+
+# пример соединения для трех таблиц
+SELECT `shtat`.`name`, `shtat`.`lastname`, `shtat`.`salary`, `depart`.`name`, `dates`.`entrance` FROM `shtat`
+LEFT JOIN `depart`
+ON `depart`.`id` = `shtat`.`dept`
+LEFT JOIN `dates`
+ON `dates`.`sotr_id` = `shtat`.`id`;
+
+
+---
+
+
+# создаем простое представление
+CREATE VIEW `sotr` AS
+SELECT `name`, `lastname` FROM `shtat` WHERE `dept` = 1;
+
+# работаем с представлением как с обычной табл
+SELECT * FROM `sotr`;
+
+# изменяем основную табл через представление
+UPDATE `sotr` SET `name` = 'Алёнка' WHERE `lastname` = 'Звягинцева';
+
+# удаляем строки из основной табл через представление
+DELETE FROM `sotr` WHERE `name` = 'Алёнка';
+
+
+# создаем еще одно представление
+CREATE VIEW `sotr2` AS
+SELECT `shtat`.`name` AS `Имя`, `shtat`.`lastname`, `shtat`.`salary`, `depart`.`name` AS `Отдел`, `dates`.`entrance` 
+FROM `shtat`
+LEFT JOIN `depart`
+ON `depart`.`id` = `shtat`.`dept`
+INNER JOIN `dates`
+ON `dates`.`sotr_id` = `shtat`.`id`;
+
+# можно просматривать данные через представление
+SELECT * FROM `sotr2`;
+
+# изменять данные через такое представление нельзя
+UPDATE `sotr2` SET `name` = 'Алёна' WHERE `lastname` = 'Звягинцева';
+
+# удалять через такое представление нельзя
+DELETE FROM `sotr2` WHERE `Имя` = 'Алёнка';
+
+# удаляем преставление
+DROP VIEW `sotr2`;
+
+# изменить преставление можно командой ALTER VIEW
+https://dev.mysql.com/doc/refman/8.0/en/alter-view.html
+
+
+---
+
+
+# создаем процедуру которая находит имена сотрудников по id отдела и зарплате
+DELIMITER //
+
+CREATE PROCEDURE `sotr` (otdel INT, zp INT)
+BEGIN
+SELECT `name`, `lastname` FROM `shtat` WHERE `dept` = otdel AND `salary` > zp;
+END//
+
+DELIMITER ;
+
+# вызываем процедуру
+CALL `sotr` (1, 20000);
+
+
+# создаем функцию которая находит название отдела по id его сотрудника
+CREATE FUNCTION `dept` (sotrid INT)
+RETURNS VARCHAR(40) DETERMINISTIC
+READS SQL DATA
+RETURN (SELECT `depart`.`name` FROM `shtat` LEFT JOIN `depart` ON `depart`.`id` = `shtat`.`dept` WHERE `shtat`.`id` = sotrid);
+
+# запускаем функцию
+SELECT `dept`(3);
+
+
+---
+
+
+# создаем триггер который вставляет запись о дате поступления сотрудника на работу
+CREATE TRIGGER `newsotr`
+AFTER INSERT ON `shtat`
+FOR EACH ROW
+INSERT INTO `dates` (`sotr_id`, `entrance`) VALUES (NEW.id, CURDATE());
+
+# вставляем в таблицу shtat сразу несколько строк
+INSERT INTO `shtat` 
+(`name`,`lastname`,`dept`,`salary`) VALUES 
+('Антон','Полонников',2,35000),
+('Алена','Звягинцева',1,45000),
+('Владимир','Питерский',1,40000),
+('Анатолий','Башлыков',2,30000),
+('Ирина','Кенина',2,50000);
+
+
+# создаем триггер который вставляет запись о дате увольнения сотрудника
+## тут важно понимать, что о поступлении этого сотрудника на работу должна быть запись в таблице dates иначе триггер не сработает
+CREATE TRIGGER `byebyesotr` 
+BEFORE DELETE ON `shtat`
+FOR EACH ROW
+UPDATE `dates` SET `layoff` = CURDATE() WHERE `sotr_id` = OLD.id;
+
+# проверямем триггер
+DELETE FROM `shtat` WHERE `name` = 'Антон';

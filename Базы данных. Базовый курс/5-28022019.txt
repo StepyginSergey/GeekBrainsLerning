@@ -1,0 +1,233 @@
+﻿# создаем простое представление
+CREATE VIEW `dep` 
+AS SELECT `name`, `count` FROM `depart`;
+
+# делаем выборку как из обычной таблицы
+SELECT * FROM `dep`;
+
+
+---
+
+
+# создаем функцию
+CREATE FUNCTION `find` (s_name VARCHAR(25), s_lastname VARCHAR(25))
+RETURNS INT
+READS SQL DATA
+RETURN(SELECT `id` FROM `shtat` WHERE `name` = s_name AND `lastname` = s_lastname);
+
+DROP FUNCTION `find`;
+CREATE FUNCTION `find` (s_name VARCHAR(25), s_lastname VARCHAR(25))
+RETURNS INT
+READS SQL DATA
+RETURN(SELECT `id` FROM `shtat` WHERE `name` = s_name AND `lastname` = s_lastname LIMIT 1);
+
+# проверяем функцию
+SELECT `find`('Тарас','Голомозый');
+
+# выводим всю инфорацию о сотруднике
+SELECT * FROM `shtat` WHERE `id` = (SELECT `find`('Тарас','Голомозый'));
+
+# то же самое без функции работает медленнее
+SELECT * FROM `shtat` WHERE `name` = 'Тарас' AND `lastname` = 'Голомозый';
+
+# если ошибка несоответствия кодировок приводим всё к одной кодировке
+SET collation_connection = 'utf8mb4_unicode_ci';
+SET character_set_client  = utf8mb4;
+SET character_set_results = utf8mb4;
+ALTER DATABASE `lesson3` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE `shtat` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+---
+
+
+# создаем процедуру
+CREATE PROCEDURE `find` (s_name VARCHAR(25), s_lastname VARCHAR(25))
+
+READS SQL DATA
+SELECT * FROM `shtat` WHERE `name` = s_name AND `lastname` = s_lastname;
+
+# проверяем процедуру
+CALL `find`('Тарас','Голомозый');
+
+
+---
+
+
+# так можно создать полную структурную копию таблицы dates
+CREATE TABLE `salary` LIKE `dates`;
+
+# смотрим скрипт создания таблицы dates
+SHOW CREATE TABLE `dates`;
+
+# создаем таблицу salary на сонове этого скрипта (экономим время)
+CREATE TABLE `salary` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sotr_id` int(11) NOT NULL,
+  `payoff` INT DEFAULT NULL,
+  `pay_date` date DEFAULT NULL,
+  `comment` VARCHAR(255),
+  PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+# создаем триггер
+CREATE TRIGGER `welcome_trig`
+AFTER INSERT ON `shtat`
+FOR EACH ROW
+INSERT INTO `salary`
+(`sotr_id`,`payoff`,`pay_date`,`comment`) VALUES
+(NEW.id, NEW.salary/2, CURDATE(), 'автоматическая выплата вступ бонуса');
+
+# проверяем триггер
+INSERT INTO `shtat` 
+(`name`,`lastname`,`dept`,`salary`) VALUES 
+('Анатолий','Башлыков',2,30000),
+('Ирина','Кенина',2,40000);
+
+
+---
+
+
+# заходим в первую консоль
+root@MySQL8:~# mysql -u root -p
+Enter password: ******
+
+mysql> SHOW SCHEMAS;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| lesson1            |
+| lesson2            |
+| mysql              |
+| performance_schema |
+| phpmyadmin         |
+| sys                |
++--------------------+
+7 rows in set (0,00 sec)
+
+mysql> USE lesson2
+Database changed
+
+mysql> SHOW TABLES;
++-------------------+
+| Tables_in_lesson2 |
++-------------------+
+| dates             |
+| dep               |
+| depart            |
+| salary            |
+| shtat             |
+| shtat_old         |
+| sotr              |
++-------------------+
+7 rows in set (0,00 sec)
+
+# блокируем все операции кроме чтения в табл `dates`
+mysql> LOCK TABLE `dates` READ;
+Query OK, 0 rows affected (0,00 sec)
+
+
+# заходим во вторую консоль
+root@MySQL8:~# mysql -u root -p123123
+
+# выбираем БД lesson2
+mysql> USE lesson2
+Database changed
+
+## после того как заблокировали таблицу shtat читать из нее можно а удалять нет
+mysql> SELECT * FROM `dates`;
++----+---------+------------+------------+
+| id | sotr_id | entrance   | layoff     |
++----+---------+------------+------------+
+|  1 |       1 | 2019-02-25 | NULL       |
+|  2 |       3 | 2019-02-25 | NULL       |
+|  3 |       2 | 2019-02-25 | 2019-02-25 |
+|  4 |       7 | 2019-02-25 | 2019-02-25 |
+|  5 |       8 | 2019-02-25 | NULL       |
+|  6 |       9 | 2019-02-25 | NULL       |
+|  7 |      10 | 2019-02-25 | NULL       |
+|  8 |      11 | 2019-02-25 | NULL       |
+|  9 |      12 | 2019-02-28 | NULL       |
+| 10 |      13 | 2019-02-28 | NULL       |
++----+---------+------------+------------+
+10 rows in set (0,00 sec)
+
+
+# возвращаемся в первую консоль и разблокируем таблицы
+mysql> UNLOCK TABLES;
+Query OK, 0 rows affected (0,01 sec)
+
+
+mysql> DELETE FROM `dates` WHERE `id` = 1;
+Query OK, 1 row affected (45,26 sec) # удаление происходит только после разблокировки
+
+
+---
+
+
+# находим точное название переменной autocommit
+SHOW VARIABLES LIKE 'AUTOCOMMIT';
+
+# выключаем автокоммиты
+SET AUTOCOMMIT = 0;
+
+# находим точное название переменной transaction_isolation
+SHOW VARIABLES LIKE '%TRANSACTION%';
+
+# выставляем нужный уровень изоляций
+SET transaction_isolation = SERIALIZABLE;
+
+# создаем транзакцию
+BEGIN;
+SELECT @a := (SELECT MAX(`salary`) FROM `shtat`);
+SELECT @b := (SELECT MIN(`salary`) FROM `shtat`);
+SELECT @c := (SELECT `id` FROM `shtat` WHERE `salary` = @b);
+INSERT INTO `salary` 
+(`sotr_id`,`payoff`,`pay_date`,`comment`) VALUES
+(@c, @a - @b, CURDATE(), 'выплата разницы ЗП');
+COMMIT;
+
+
+---
+
+
+# анализируем таблицу
+EXPLAIN `depart`;
+
+# анализируем простой запрос
+EXPLAIN SELECT `name` FROM `shtat` WHERE `id` = 12;
+
+# анализируем запрос с поиском по ФИО
+mysql> EXPLAIN SELECT * FROM `shtat` WHERE `name` = 'Тарас' AND `lastname` = 'Голомозый';
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+|  1 | SIMPLE      | shtat | NULL       | ALL  | NULL          | NULL | NULL    | NULL |    8 |    12.50 | Using where |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+1 row in set, 1 warning (0,00 sec)
+
+# КПД неприлично низкий, ускорить выполнение запроса поможет составной индекс
+CREATE INDEX `fullname` ON `shtat`(`name`,`lastname`);
+
+# анализируем запрос еще раз
+mysql> EXPLAIN  SELECT * FROM `shtat` WHERE `name` = 'Тарас' AND `lastname` = 'Голомозый';
++----+-------------+-------+------------+------+---------------+----------+---------+-------------+------+----------+-------+
+| id | select_type | table | partitions | type | possible_keys | key      | key_len | ref         | rows | filtered | Extra |
++----+-------------+-------+------------+------+---------------+----------+---------+-------------+------+----------+-------+
+|  1 | SIMPLE      | shtat | NULL       | ref  | fullname      | fullname | 204     | const,const |    1 |   100.00 | NULL  |
++----+-------------+-------+------------+------+---------------+----------+---------+-------------+------+----------+-------+
+1 row in set, 1 warning (0,00 sec)
+
+# все 100% просмотренных строк подошли под условие
+
+
+# составной индекс поможет и при поиске только по его части
+EXPLAIN SELECT `name` FROM `shtat` WHERE `name` = 'Антон';
+
+# и даже так
+EXPLAIN SELECT `name` FROM `shtat` WHERE `name` LIKE 'Антон';
+
+
+# об индексах в запросах
+https://dev.mysql.com/doc/refman/8.0/en/index-hints.html
