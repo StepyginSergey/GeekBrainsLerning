@@ -1,0 +1,388 @@
+﻿# смотрим server_id и меняем если необходимо
+SHOW VARIABLES LIKE 'server_id';
+SET GLOBAL server_id = 999;
+
+
+root@MySQL8:~# mongo
+
+# смотрим какие на сервере есть базы
+> show dbs
+admin     0.000GB
+config    0.000GB
+local     0.000GB
+mar       0.000GB
+testtest  0.000GB
+
+# выбираем mar
+> use mar
+switched to db mar
+
+# выводим из базы все записи
+> db.mar.find()
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "sal" : 55000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "sal" : 22000, "pos" : "manager", "depart" : 1 }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "sal" : 35000, "depart" : 22 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "sal" : 35000, "depart" : 2 }
+
+# выводим из базы все записи используя функцию-бьютифер .pretty()
+> db.mar.find().pretty()
+{
+  "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"),
+  "name" : "Vlad",
+  "lastname" : "Pit",
+  "sal" : 55000
+}
+{
+  "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"),
+  "name" : "Irina",
+  "lastname" : "Kenina",
+  "sal" : 22000,
+  "pos" : "manager",
+  "depart" : 1
+}
+{
+  "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"),
+  "name" : "Ant",
+  "lastname" : "Pol",
+  "sal" : 35000,
+  "depart" : 22
+}
+{
+  "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"),
+  "name" : "Anatol",
+  "lastname" : "Bash",
+  "sal" : 35000,
+  "depart" : 2
+}
+
+# смотрим инфо о выбранной базе
+> db.stats()
+{
+  "db" : "mar",
+  "collections" : 1,
+  "views" : 0,
+  "objects" : 4,
+  "avgObjSize" : 85.75,
+  "dataSize" : 343,
+  "storageSize" : 36864,
+  "numExtents" : 0,
+  "indexes" : 1,
+  "indexSize" : 36864,
+  "fsUsedSize" : 6824579072,
+  "fsTotalSize" : 7330062336,
+  "ok" : 1
+}
+
+# выводим конфиг монго на консоль
+> db.adminCommand('getCmdLineOpts')
+{
+  "argv" : [
+    "/usr/bin/mongod",
+    "--config",
+    "/etc/mongod.conf"
+  ],
+  "parsed" : {
+    "config" : "/etc/mongod.conf",
+    "net" : {
+      "bindIp" : "127.0.0.1",
+      "port" : 27017
+    },
+    "processManagement" : {
+      "timeZoneInfo" : "/usr/share/zoneinfo"
+    },
+    "storage" : {
+      "dbPath" : "/var/lib/mongodb",
+      "journal" : {
+        "enabled" : true
+      }
+    },
+    "systemLog" : {
+      "destination" : "file",
+      "logAppend" : true,
+      "path" : "/var/log/mongodb/mongod.log"
+    }
+  },
+  "ok" : 1
+}
+
+> exit
+bye
+
+# делаем бекап mongo простым копирование файлов
+root@MySQL8:~# cp -r /var/lib/mongodb /var/backup/
+
+# делаем бекап с помощью mongodump
+root@MySQL8:~# mongodump --db mar --out /var/backup_mongo/backup_`date '+%Y.%m.%d'`
+
+
+# логинимся и дропаем бд mar
+
+root@MySQL8:~# mongo
+
+> db.mar.drop()
+true
+
+# смотрим какие на сервере есть базы
+> show dbs
+admin     0.000GB
+config    0.000GB
+local     0.000GB
+testtest  0.000GB
+
+> exit
+bye
+
+
+# восстанавливаем mar из бекапа с помощью mongorestore
+root@MySQL8:~# mongorestore --db mar /var/backup_mongo/backup_`date '+%Y.%m.%d'`/mar/
+
+
+# снова логинимся и смотрим какие на сервере есть базы
+> show dbs
+admin     0.000GB
+config    0.000GB
+local     0.000GB
+mar       0.000GB  <-- вот она
+testtest  0.000GB
+
+
+---
+
+
+# пример CSV
+CREATE TABLE `lesson2`.`sotr_csv` (
+  `id` INT NOT NULL,
+  `name` VARCHAR(45) NOT NULL,
+  `lastname` VARCHAR(45) NOT NULL,
+  `salary` INT NOT NULL)
+ENGINE = CSV;
+
+
+id,name,lastname,salary;
+1,Anatol,Bash,25000;
+2,Taras,Gol,23000;
+
+
+---
+
+
+# делаем дамп базы lesson2
+root@MySQL8:~# mysqldump -u root -p123123 lesson2 > /var/backup_mysql/backup_`date '+%Y.%m.%d'`
+
+# восстанавливаем базу lesson2 из дампа
+root@MySQL8:~# mysql -u root -p123123 lesson2 < /var/backup_mysql/backup_`date '+%Y.%m.%d'`
+
+
+---
+
+
+# логинимся от имени root
+root@MySQL8:~# mysql -u root -p123123
+
+# создаем пользователя mar
+mysql> CREATE USER IF NOT EXISTS 'mar'@'%' IDENTIFIED WITH mysql_native_password BY '123123';
+Query OK, 0 rows affected (0,09 sec)
+
+# даем пользователю mar все права
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'mar'@'%' WITH GRANT OPTION;
+Query OK, 0 rows affected (0,08 sec)
+
+# обновляем права
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0,00 sec)
+
+# разлогиниваемся
+mysql> quit
+Bye
+
+
+---
+
+
+# логинимся от имени mar
+root@MySQL8:~# mysql -u mar -p123123
+
+# проверяем права
+mysql> SHOW SCHEMAS;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| lesson1            |
+| lesson2            |
+| mysql              |
+| performance_schema |
+| phpmyadmin         |
+| sys                |
++--------------------+
+7 rows in set (0,00 sec)
+
+mysql> SELECT * FROM lesson2.dates;
++----+---------+------------+------------+
+| id | sotr_id | entrance   | layoff     |
++----+---------+------------+------------+
+|  2 |       3 | 2019-02-25 | NULL       |
+|  3 |       2 | 2019-02-25 | 2019-02-25 |
+|  4 |       7 | 2019-02-25 | 2019-02-25 |
+|  5 |       8 | 2019-02-25 | NULL       |
+|  6 |       9 | 2019-02-25 | NULL       |
+|  7 |      10 | 2019-02-25 | NULL       |
+|  8 |      11 | 2019-02-25 | 2019-03-04 |
+|  9 |      12 | 2019-02-28 | NULL       |
+| 10 |      13 | 2019-02-28 | 2019-03-04 |
++----+---------+------------+------------+
+9 rows in set (0,00 sec)
+
+# создаем пользователя mar2
+CREATE USER IF NOT EXISTS 'mar2'@'localhost' IDENTIFIED WITH mysql_native_password BY '123123' PASSWORD EXPIRE INTERVAL 30 DAY;
+Query OK, 0 rows affected (0,11 sec)
+
+# даем пользователю mar2 права SELECT, DELETE и TRIGGER на указанные табл
+mysql> GRANT SELECT, DELETE, TRIGGER ON `lesson2`.`depart` TO 'mar2'@'localhost';
+Query OK, 0 rows affected (0,06 sec)
+
+# обновляем права
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0,00 sec)
+
+# разлогиниваемся
+mysql> quit
+Bye
+
+
+---
+
+
+# логинимся от имени mar2
+root@MySQL8:~# mysql -u mar2 -p123123
+
+# проверяем права
+mysql> SHOW SCHEMAS;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| lesson2            |
++--------------------+
+2 rows in set (0,00 sec)
+
+mysql> USE lesson1;
+ERROR 1044 (42000): Access denied for user 'mar2'@'localhost' to 
+mysql> USE lesson111;
+ERROR 1044 (42000): Access denied for user 'mar2'@'localhost' to database 'lesson111'
+mysql> USE lesson2;
+Database changed
+
+mysql> SHOW TABLES;
++-------------------+
+| Tables_in_lesson2 |
++-------------------+
+| depart            |
++-------------------+
+1 row in set (0,00 sec)
+
+mysql> SELECT * FROM `depart`;
++-----+-----------------------------------+-------+---------+
+| id  | name                              | count | head_id |
++-----+-----------------------------------+-------+---------+
+|   1 | it                                |     0 |    NULL |
+|   2 | Бухгалтерия                       |     0 |    NULL |
+|   3 | Маркетинг                         |     0 |    NULL |
+|   4 | Бухгалтерия                       |     0 |    NULL |
+|   5 | Охрана                            |     0 |    NULL |
+|   6 | Контроль качества                 |     0 |    NULL |
+|   7 | Реклама                           |     0 |    NULL |
+| 100 | Почтовый Отдел                    |     0 |    NULL |
++-----+-----------------------------------+-------+---------+
+8 rows in set (0,00 sec)
+
+mysql> DELETE FROM `depart` WHERE `id` = 100;
+Query OK, 1 row affected (0,10 sec)
+
+mysql> SELECT * FROM `depart`;
++----+-----------------------------------+-------+---------+
+| id | name                              | count | head_id |
++----+-----------------------------------+-------+---------+
+|  1 | it                                |     0 |    NULL |
+|  2 | Бухгалтерия                       |     0 |    NULL |
+|  3 | Маркетинг                         |     0 |    NULL |
+|  4 | Бухгалтерия                       |     0 |    NULL |
+|  5 | Охрана                            |     0 |    NULL |
+|  6 | Контроль качества                 |     0 |    NULL |
+|  7 | Реклама                           |     0 |    NULL |
++----+-----------------------------------+-------+---------+
+7 rows in set (0,00 sec)
+
+# разлогиниваемся
+mysql> quit
+Bye
+
+
+---
+
+
+# логинимся от имени root 
+root@MySQL8:~# mysql -u root -p123123
+
+# забираем у пользователя mar2 права DELETE и SELECT со всех табл
+mysql> REVOKE DELETE, SELECT ON *.* FROM 'mar2'@'localhost';
+Query OK, 0 rows affected (0,01 sec)
+
+# обновляем права
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0,01 sec)
+
+# разлогиниваемся
+mysql> quit
+Bye
+
+
+---
+
+
+# меняем пароль mar2 через mysqladmin
+root@MySQL8:~# mysqladmin -u mar2 -p password '12341234';
+Enter password: ******
+
+# проверяем пароль mar2 (старый не работает)
+root@MySQL8:~# mysql -u mar2 -p123123
+ERROR 1045 (28000): Access denied for user 'mar2'@'localhost' (using password: YES)
+
+# проверяем пароль mar2 (новый работает)
+root@MySQL8:~# mysql -u mar2 -p12341234
+
+# меняем пароль mar от имени другого пользователя с помощью SQL-команд
+mysql> SET PASSWORD FOR 'mar'@'%' = '12341234';
+
+# разлогиниваемся
+mysql> quit
+Bye
+
+# проверяем пароль mar (новый работает)
+root@MySQL8:~# mysql -u mar -p12341234
+
+mysql> quit
+Bye
+
+
+---
+
+
+# немного о кластеризации и шардинге в mongodb
+https://docs.mongodb.com/manual/tutorial/deploy-shard-cluster/
+https://docs.mongodb.com/manual/sharding/
+
+# сравнение характеристик популярных движков mysql
+https://dev.mysql.com/doc/refman/8.0/en/storage-engines.html
+
+# справочник по привилегиям пользователей mysql
+https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html
+
+# подробное описание возможностей mysqldump
+https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
+
+# подробное описание возможностей mongodump
+https://docs.mongodb.com/v4.0/reference/program/mongodump/
+
+# создание пользователей в mongo
+https://docs.mongodb.com/manual/reference/method/db.createUser/
