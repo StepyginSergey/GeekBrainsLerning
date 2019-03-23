@@ -1,0 +1,224 @@
+﻿-- создаем новую схему
+CREATE SCHEMA lesson8;
+
+
+-- выбираем новую схему
+SET search_path TO lesson8;
+
+
+-- создаем таблицу, у которой значения являются массивами
+CREATE TABLE holiday_picnic (  
+     holiday varchar(50), -- строковое значение
+     sandwich text[], -- массив
+     side text[] [], -- многомерный массив
+     dessert text ARRAY, -- массив
+     beverage text ARRAY[4] -- массив из 4-х элементов
+);
+
+ -- вставляем значения массивов в таблицу
+INSERT INTO holiday_picnic VALUES  
+     ('Labor Day',
+     '{"roast beef","veggie","turkey"}',
+     '{
+        {"potato salad","green salad", "squid salad"},
+        {"chips","crackers", NULL}
+     }',
+     '{"fruit cocktail","berry pie","ice cream"}',
+     '{"soda","juice","beer","water"}'
+     );
+
+-- смотрим что записалось в holiday_picnic
+SELECT * FROM holiday_picnic;
+
+-- выбираем только второй элемент массива sandwich
+SELECT sandwich[2] FROM holiday_picnic;
+
+
+-- создаем таблицу для хранения троп
+CREATE TABLE trails (  
+     trail_name varchar(250),
+     trail_path path
+);
+
+-- вставляем тропу в таблицу,
+ -- для которой маршрут определяется координатами в формате широта-долгота
+INSERT INTO trails VALUES  
+     ('Dool Trail - Creeping Forest Trail Loop',
+     '((37.172,-122.22261666667),
+     (37.171616666667,-122.22385),
+     (37.1735,-122.2236),
+     (37.175416666667,-122.223),
+     (37.1758,-122.22378333333),
+     (37.179466666667,-122.22866666667),
+     (37.18395,-122.22675),
+     (37.180783333333,-122.22466666667),
+     (37.176116666667,-122.2222),
+     (37.1753,-122.22293333333),
+     (37.173116666667,-122.22281666667))');
+
+-- выбираем все записи
+SELECT * FROM trails;
+
+-- создаем составной тип данных liketype
+CREATE TYPE liketype AS (
+liker_id int,
+liked_id int,
+obj_id int,
+likedate date
+);
+
+-- создаем таблицу использующую новый тип
+CREATE TABLE likes (
+id serial,
+likes liketype
+);
+
+-- вставляем данные в таблицу
+INSERT INTO likes (likes) VALUES
+(ROW(1,1,2,NULL)),
+(ROW(1,2,3,NULL)),
+(ROW(2,1,4,NULL));
+
+-- выбираем все записи
+SELECT * FROM likes;
+
+-- выбираем записи о юзерах которых лайкнул id = 1
+SELECT (likes).liked_id FROM likes WHERE (likes).liker_id=1;
+
+-- создаем составной индекс для строк в которых которых liker_id = 1
+CREATE INDEX like_idx ON likes(likes) WHERE (likes).liker_id = 1;
+
+
+---
+
+
+root@MySQL8:~# redis-cli
+
+127.0.0.1:6379> set mar:0:string hello
+OK
+
+127.0.0.1:6379> get mar:0:string
+"hello"
+
+127.0.0.1:6379> ttl mar:0:string
+(integer) -1
+
+127.0.0.1:6379> expire mar:0:string 300
+(integer) 1
+
+127.0.0.1:6379> ttl mar:0:string
+(integer) 288
+
+127.0.0.1:6379> ttl mar:0:string
+(integer) 284
+
+127.0.0.1:6379> append mar:0:string " ,world!"
+(integer) 13
+
+127.0.0.1:6379> strlen 13
+(integer) 0
+
+127.0.0.1:6379> strlen mar:0:string
+(integer) 13
+
+127.0.0.1:6379> get mar:0:string
+"hello ,world!"
+
+127.0.0.1:6379>  getrange mar:0:string 7 11
+"world"
+
+127.0.0.1:6379> ttl mar:0:string
+(integer) 99
+
+127.0.0.1:6379> setrange mar:0:string 5 ", "
+(integer) 13
+
+127.0.0.1:6379> get mar:0:string
+"hello, world!"
+
+127.0.0.1:6379> ttl mar:0:string
+(integer) 52
+
+
+127.0.0.1:6379> set mar:1:int 123 EX 200
+OK
+
+127.0.0.1:6379> incr mar:1:int
+(integer) 124
+
+127.0.0.1:6379> incr mar:1:int
+(integer) 125
+
+127.0.0.1:6379> decr mar:1:int
+(integer) 124
+
+127.0.0.1:6379> decr mar:1:int
+(integer) 123
+
+127.0.0.1:6379> decr mar:1:int
+(integer) 122
+
+127.0.0.1:6379> decr mar:1:int
+(integer) 121
+
+127.0.0.1:6379> decr mar:1:int
+(integer) 120
+
+127.0.0.1:6379> decrby mar:1:int 5
+(integer) 115
+
+127.0.0.1:6379> decrby mar:1:int 5
+(integer) 110
+
+127.0.0.1:6379> incrby mar:1:int 10
+(integer) 120
+
+127.0.0.1:6379> incrby mar:1:int 10
+(integer) 130
+
+127.0.0.1:6379> strlen mar:1:int
+(integer) 3
+
+
+127.0.0.1:6379> multi
+OK
+
+127.0.0.1:6379> set mar:100:int 500
+QUEUED
+
+127.0.0.1:6379> incrby mar:100:int 25
+QUEUED
+
+127.0.0.1:6379> set mar:101:string "uraaaaa!!!!!"
+QUEUED
+
+127.0.0.1:6379> exec
+1) OK
+2) (integer) 525
+3) OK
+
+127.0.0.1:6379> get mar:100:int
+"525"
+
+
+---
+
+
+# документация по postgresql на русском языке
+https://postgrespro.ru/docs/postgresql/
+
+# работа с массивами 
+https://postgrespro.ru/docs/postgresql/11/arrays#ARRAYS-ACCESSING
+https://postgrespro.ru/docs/postgresql/11/arrays#ARRAYS-MODIFYING
+
+# документация по redis
+https://redis.io/commands
+
+# redis можно взять отсюда 
+https://redis.io/download
+
+# уставнока redis на linux
+wget http://download.redis.io/releases/redis-stable.tar.gz
+tar xzf redis-stable.tar.gz
+cd redis-stable
+make

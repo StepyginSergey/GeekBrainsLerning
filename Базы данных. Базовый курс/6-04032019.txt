@@ -1,0 +1,445 @@
+﻿# сначала нужно узнать ip-адрес виртуальной машины
+root@MySQL8:~#	ip a
+				inet 192.168.3.42/24 brd 192.168.3.255 scope global dynamic enp0s3
+
+в основном конф файле 
+/etc/mysql/my.cnf
+или для windows
+MySQL v5.7:
+C:\ProgramData\MySQL\MySQL Server 5.7\my.ini
+MySQL v8.0:
+C:\Program Files\MySQL\MySQL Server 8.0\my.ini
+
+должна присутствовать строка:
+!includedir /etc/mysql/conf.d/
+
+в этой папке (/etc/mysql/conf.d/) можно создавать дополнительные файлы конфигурации с произвольными именами
+
+
+---
+
+
+1) конфигурируем master
+
+[mysqld]
+
+# id сервера в рамках одного кластера строго уникален
+server-id = 1
+
+# bin log (имя файла произвольное)
+log_bin = /var/log/mysql/bin.log
+
+# bases (binlog_do_db - реплицируемые базы или binlog_ignore_db - игнорируемые)
+#binlog_ignore_db = mysql, phpmyadmin, perfomance_schema
+binlog_do_db = lesson3
+
+
+после изменения конфига перезапустить сервер
+service mysql restart
+
+
+---
+
+
+2) выполняем SQL-команды на мастере
+
+root@MySQL8:~# mysql -u root -p
+Enter password: ******
+
+mysql> GRANT REPLICATION SLAVE ON *.* TO 'root'@'%';
+Query OK, 0 rows affected (0,00 sec)
+
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0,00 sec)
+
+mysql> SHOW MASTER STATUS;
++------------+----------+--------------+------------------+-------------------+
+| File       | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
++------------+----------+--------------+------------------+-------------------+
+| bin.000025 |      538 | lesson2      |                  |                   |
++------------+----------+--------------+------------------+-------------------+
+1 row in set (0,00 sec)
+
+mysql> quit
+Bye
+
+
+---
+
+
+3) не забывайте слить дамп нужной базы
+
+root@MySQL8:~# mysqldump -u root -p123123 lesson2 --routines > /var/20190304.sql
+
+
+---
+
+
+4) конфигурируем slave
+
+[mysqld]
+
+# id сервера в рамках одного кластера строго уникален
+server-id = 2
+
+# bin log (имя файла как на мастере)
+log_bin = bin.log 
+
+# базы для репликации (точно такие же как на мастере)
+binlog_do_db = lesson3
+
+# relay log (имя файла произвольное)
+relay-log = /var/log/mysql/relay.log
+
+
+---
+
+
+5) загружаем копию нужной базы на подчиненный сервер
+
+root@MySQL8:~# mysqldump -u root -p123123 lesson2 --routines < /var/20190304.sql
+
+
+---
+
+
+6) выполняем SQL-команды на подчиненном сервере
+
+mysql> STOP SLAVE;
+Query OK, 0 rows affected, 1 warning (0,00 sec)
+
+mysql> RESET SLAVE;
+Query OK, 0 rows affected (0,00 sec)
+
+mysql> CHANGE MASTER TO MASTER_HOST='192.168.3.42', MASTER_USER='root', MASTER_PASSWORD='123123', MASTER_LOG_FILE='bin.000025', MASTER_LOG_POS=538;
+Query OK, 0 rows affected (0,00 sec)
+
+# запускаем сервер как подчиненный сервер
+mysql> START SLAVE;
+Query OK, 0 rows affected (0,05 sec)
+
+# смотрим статус слейва ( \G выводит данные в столбик, удобно для консоли )
+mysql> SHOW SLAVE STATUS \G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.3.42
+                  Master_User: root
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: bin.000025
+          Read_Master_Log_Pos: 538
+               Relay_Log_File: relay.000002
+                Relay_Log_Pos: 316
+        Relay_Master_Log_File: bin.000025
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 538
+              Relay_Log_Space: 514
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 1
+                  Master_UUID: 3a90a3b6-f1ab-11e8-8365-080027ad0e39
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set:
+            Executed_Gtid_Set:
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name:
+           Master_TLS_Version:
+       Master_public_key_path:
+        Get_master_public_key: 0
+1 row in set (0,00 sec)
+
+в результате выполнения команды не должно быть никаких ошибок
+
+
+ошибка
+Fatal error: The slave I/O thread stops because master and slave have equal MySQL server UUIDs; these UUIDs must be different for replication to work.
+
+лечится удалением файла 
+/var/lib/mysql/auto.cnf
+
+или (для windows)
+C:\ProgramData\MySQL\MySQL Server 5.7\Data\auto.cnf
+и перезапуском сервера
+
+можно сделать это двумя командами в терминале:
+mv /var/lib/mysql/auto.cnf /var/lib/mysql/auto.cnf.bak
+service mysql restart
+
+
+бывает что не меняется server_id подчиненного сервера (очевидно, какой-то глюк) можно поменять его командой
+SET GLOBAL server_id=2;
+
+проверить значение server_id можно командой 
+SHOW VARIABLES LIKE 'server_id';
+
+для проверки репликации можно посмотреть лог в папке 
+/var/log/mysql/
+
+в логе должно быть что-то подобное:
+2019-03-04T18:28:20.906395Z 9 [System] [MY-010562] [Repl] Slave I/O thread for channel '': connected to master 'root@192.168.3.42:3306',replication started in log 'bin.000025' at position 538
+
+
+---
+
+
+7) проверяем репликацию
+
+# на слейве смотрим таблицу shtat
+mysql> SELECT * FROM `shtat`;
++----+------------------+----------------------+------+------------------------+--------+
+| id | name             | lastname             | dept | position               | salary |
++----+------------------+----------------------+------+------------------------+--------+
+|  1 | Тарас            | Голомозый            |    1 | Препод                 |  25000 |
+|  3 | Алёнка           | Звягинцева           |    1 | Тестировщик            |  45000 |
+|  8 | Алена            | Звягинцева           |    1 | NULL                   |  45000 |
+|  9 | Владимир         | Питерский            |    1 | NULL                   |  40000 |
+| 10 | Анатолий         | Башлыков             |    2 | NULL                   |  30000 |
+| 11 | Ирина            | Кенина               |    2 | NULL                   |  55000 |
+| 12 | Анатолий         | Башлыков             |    2 | NULL                   |  30000 |
++----+------------------+----------------------+------+------------------------+--------+
+7 rows in set (0,00 sec)
+
+# на мастере выполняем команду
+mysql> DELETE FROM `shtat` WHERE `id` = 11;
+Query OK, 1 row affected (0,13 sec)
+
+# снова на слейве смотрим таблицу shtat
+mysql> SELECT * FROM `shtat`;
++----+------------------+----------------------+------+------------------------+--------+
+| id | name             | lastname             | dept | position               | salary |
++----+------------------+----------------------+------+------------------------+--------+
+|  1 | Тарас            | Голомозый            |    1 | Препод                 |  25000 |
+|  3 | Алёнка           | Звягинцева           |    1 | Тестировщик            |  45000 |
+|  8 | Алена            | Звягинцева           |    1 | NULL                   |  45000 |
+|  9 | Владимир         | Питерский            |    1 | NULL                   |  40000 |
+| 10 | Анатолий         | Башлыков             |    2 | NULL                   |  30000 |
+| 12 | Анатолий         | Башлыков             |    2 | NULL                   |  30000 |
++----+------------------+----------------------+------+------------------------+--------+
+6 rows in set (0,00 sec)
+
+# данные реплицировались! и все операции на изменение данных выполняемые на мастере будут автоматически повторяться на слейве.
+
+
+--- MongoDB
+
+
+root@MySQL8:~# mongo
+MongoDB shell version v4.0.4
+connecting to: mongodb://127.0.0.1:27017
+Implicit session: session { "id" : UUID("574cf3db-935c-4283-9c7a-ec5e5002a1da") }
+MongoDB server version: 4.0.4
+
+> use feb
+switched to db feb
+
+> use mar
+switched to db mar
+
+> db.mar.insert({"name":"Tapac"})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+
+> db.mar.insert({"name":"Tapac", "lastname":"Gol", "dept":1, "sal":25000})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.insert({"name":"Ant", "lastname":"Pol", "dept":2, "sal":35000})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.insert({"name":"Alena", "lastname":"Zv", "dept":1, "sal":45000})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.insert({"name":"Vlad", "lastname":"Pit", "dept":1, "sal":55000})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "name" : "Ant", "lastname" : "Pol", "dept" : 2, "sal" : 35000 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "dept" : 1, "sal" : 55000 }
+
+> db.mar.insert({"name":"Irina", "lastname":"Kenina", "dept":1, "sal":22000, "pos":"manager"})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "name" : "Ant", "lastname" : "Pol", "dept" : 2, "sal" : 35000 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "dept" : 1, "sal" : 55000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "dept" : 1, "sal" : 22000, "pos" : "manager" }
+
+> db.mar.find({"_id" : ObjectId("5c7d7516be5ccd6c0d3e9295")})
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+
+> db.mar.find({"name" : "Tapac"})
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+
+> db.mar.find({"pos":{$exists:true}})
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "dept" : 1, "sal" : 22000, "pos" : "manager" }
+
+> db.mar.find({"name":{$regex:"^A"}})
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "name" : "Ant", "lastname" : "Pol", "dept" : 2, "sal" : 35000 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+
+> db.mar.find({"sal":{$gt:30000}})
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "name" : "Ant", "lastname" : "Pol", "dept" : 2, "sal" : 35000 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "dept" : 1, "sal" : 55000 }
+
+> db.mar.find({"sal":{$lt:30000}})
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "dept" : 1, "sal" : 22000, "pos" : "manager" }
+
+> db.mar.find({"sal":{$in:[30000, 25000, 20000, 5000, 150000, 45000]}})
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+
+> db.mar.update({"dept" : 2},{"dept" : 22})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "dept" : 22 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "dept" : 1, "sal" : 55000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "dept" : 1, "sal" : 22000, "pos" : "manager" }
+
+> db.mar.insert({"name":"Ant", "lastname":"Pol", "dept":2, "sal":35000})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.insert({"name":"Anatol", "lastname":"Bash", "dept":2, "sal":35000})
+WriteResult({ "nInserted" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "dept" : 22 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "dept" : 1, "sal" : 55000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "dept" : 1, "sal" : 22000, "pos" : "manager" }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "dept" : 2, "sal" : 35000 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "dept" : 2, "sal" : 35000 }
+
+> db.mar.update({"dept" : 2},{$set:{"dept" : 22}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "dept" : 1, "sal" : 25000 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "dept" : 22 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "dept" : 1, "sal" : 45000 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "dept" : 1, "sal" : 55000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "dept" : 1, "sal" : 22000, "pos" : "manager" }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "dept" : 22, "sal" : 35000 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "dept" : 2, "sal" : 35000 }
+
+> db.mar.update({"dept":{$exists:true}},{$rename:{"dept":"depart"}}, false, true)
+WriteResult({ "nMatched" : 7, "nUpserted" : 0, "nModified" : 7 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "sal" : 25000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "depart" : 22 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "sal" : 45000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "sal" : 55000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "sal" : 22000, "pos" : "manager", "depart" : 1 }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "sal" : 35000, "depart" : 22 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "sal" : 35000, "depart" : 2 }
+
+> db.mar.update({"name" : "Alena"},{$set:{"head":1}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d739abe5ccd6c0d3e9294"), "name" : "Tapac" }
+{ "_id" : ObjectId("5c7d7516be5ccd6c0d3e9295"), "name" : "Tapac", "lastname" : "Gol", "sal" : 25000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "depart" : 22 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "sal" : 45000, "depart" : 1, "head" : 1 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "sal" : 55000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "sal" : 22000, "pos" : "manager", "depart" : 1 }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "sal" : 35000, "depart" : 22 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "sal" : 35000, "depart" : 2 }
+
+> db.mar.remove({"name" : "Tapac"})
+WriteResult({ "nRemoved" : 2 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d7526be5ccd6c0d3e9296"), "depart" : 22 }
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "sal" : 45000, "depart" : 1, "head" : 1 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "sal" : 55000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "sal" : 22000, "pos" : "manager", "depart" : 1 }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "sal" : 35000, "depart" : 22 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "sal" : 35000, "depart" : 2 }
+
+> db.mar.remove({"_id" : ObjectId("5c7d7526be5ccd6c0d3e9296")})
+WriteResult({ "nRemoved" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d7537be5ccd6c0d3e9297"), "name" : "Alena", "lastname" : "Zv", "sal" : 45000, "depart" : 1, "head" : 1 }
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "sal" : 55000, "depart" : 1 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "sal" : 22000, "pos" : "manager", "depart" : 1 }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "sal" : 35000, "depart" : 22 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "sal" : 35000, "depart" : 2 }
+
+> db.mar.update({"name" : "Vlad"},{$unset:{"depart":1}})
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+
+> db.mar.find()
+{ "_id" : ObjectId("5c7d754cbe5ccd6c0d3e9298"), "name" : "Vlad", "lastname" : "Pit", "sal" : 55000 }
+{ "_id" : ObjectId("5c7d757bbe5ccd6c0d3e9299"), "name" : "Irina", "lastname" : "Kenina", "sal" : 22000, "pos" : "manager", "depart" : 1 }
+{ "_id" : ObjectId("5c7d77b9be5ccd6c0d3e929a"), "name" : "Ant", "lastname" : "Pol", "sal" : 35000, "depart" : 22 }
+{ "_id" : ObjectId("5c7d77ccbe5ccd6c0d3e929b"), "name" : "Anatol", "lastname" : "Bash", "sal" : 35000, "depart" : 2 }
+
+
+---
+
+
+# скачать MongoDB
+https://www.mongodb.com/download-center/community
+
+# репликация MongoDB
+https://docs.mongodb.com/manual/replication/
+
+# транзакции MongoDB
+https://docs.mongodb.com/master/core/transactions/
+
+# зависимости в MongoDB
+https://docs.mongodb.com/v4.0/reference/database-references/
